@@ -82,7 +82,7 @@ func (s) TestHandlerTransport_NewServerHandlerTransport(t *testing.T) {
 				Method:     "POST",
 				Header:     http.Header{"Content-Type": []string{"application/grpc"}},
 			},
-			wantErr:     "gRPC requires HTTP/2",
+			wantErr:     "gRPC requires HTTP/2 or HTTP/3",
 			wantErrCode: http.StatusHTTPVersionNotSupported,
 		},
 		{

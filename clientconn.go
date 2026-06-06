@@ -1524,7 +1524,13 @@ func (ac *addrConn) createTransport(ctx context.Context, addr resolver.Address, 
 	defer cancel()
 	copts.ChannelzParent = ac.channelz
 
-	newTr, err := transport.NewHTTP2Client(connectCtx, ac.cc.ctx, addr, copts, onClose)
+	var newTr transport.ClientTransport
+	var err error
+	if copts.HTTP3 {
+		newTr, err = transport.NewHTTP3Client(connectCtx, ac.cc.ctx, addr, copts, onClose)
+	} else {
+		newTr, err = transport.NewHTTP2Client(connectCtx, ac.cc.ctx, addr, copts, onClose)
+	}
 	if err != nil {
 		if logger.V(2) {
 			logger.Infof("Creating new client transport to %q: %v", addr, err)

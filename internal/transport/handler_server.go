@@ -65,8 +65,8 @@ func NewServerHandlerTransport(w http.ResponseWriter, r *http.Request, stats sta
 		http.Error(w, msg, http.StatusUnsupportedMediaType)
 		return nil, errors.New(msg)
 	}
-	if r.ProtoMajor != 2 {
-		msg := "gRPC requires HTTP/2"
+	if r.ProtoMajor != 2 && r.ProtoMajor != 3 {
+		msg := "gRPC requires HTTP/2 or HTTP/3"
 		http.Error(w, msg, http.StatusHTTPVersionNotSupported)
 		return nil, errors.New(msg)
 	}
@@ -268,7 +268,11 @@ func (ht *serverHandlerTransport) writeStatus(s *ServerStream, st *status.Status
 				for _, v := range vv {
 					// http2 ResponseWriter mechanism to send undeclared Trailers after
 					// the headers have possibly been written.
-					h.Add(http2.TrailerPrefix+k, encodeMetadataHeader(k, v))
+					var prefix string
+					if ht.req.ProtoMajor == 2 {
+						prefix = http2.TrailerPrefix
+					}
+					h.Add(prefix+k, encodeMetadataHeader(k, v))
 				}
 			}
 		}
@@ -462,8 +466,11 @@ func (ht *serverHandlerTransport) HandleStreams(ctx context.Context, startStream
 	close(requestOver)
 
 	// Wait for reading goroutine to finish.
-	req.Body.Close()
+	if ht.req.ProtoMajor == 2 {
+		req.Body.Close()
+	}
 	<-readerDone
+	req.Body.Close()
 }
 
 func (ht *serverHandlerTransport) runStream() {
@@ -472,7 +479,15 @@ func (ht *serverHandlerTransport) runStream() {
 		case fn := <-ht.writes:
 			fn()
 		case <-ht.closedCh:
-			return
+			// Drain pending writes to ensure the final status/trailers are sent.
+			for {
+				select {
+				case fn := <-ht.writes:
+					fn()
+				default:
+					return
+				}
+			}
 		}
 	}
 }

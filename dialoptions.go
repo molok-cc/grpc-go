@@ -405,6 +405,13 @@ func WithInsecure() DialOption {
 	})
 }
 
+// WithHTTP3 returns a DialOption which enables HTTP/3 for the ClientConn.
+func WithHTTP3() DialOption {
+	return newFuncDialOption(func(o *dialOptions) {
+		o.copts.HTTP3 = true
+	})
+}
+
 // WithNoProxy returns a DialOption which disables the use of proxies for this
 // ClientConn. This is ignored if WithDialer or WithContextDialer are used.
 //

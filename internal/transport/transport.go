@@ -553,6 +553,8 @@ type ConnectOptions struct {
 	BufferPool mem.BufferPool
 	// StaticWindowSize controls whether dynamic window sizing is enabled.
 	StaticWindowSize bool
+	// HTTP3 indicates whether to use HTTP/3 for this transport.
+	HTTP3 bool
 }
 
 // WriteOptions provides additional hints and information for message
@@ -644,6 +646,16 @@ type ClientTransport interface {
 	// Peer returns information about the peer associated with the Transport.
 	// The returned information includes authentication and network address details.
 	Peer() *peer.Peer
+}
+
+// clientCallback is the interface that ClientStream uses to call back into
+// the transport that created it.
+type clientCallback interface {
+	incrMsgRecv()
+	closeStream(s *ClientStream, err error, rst bool, rstCode http2.ErrCode, st *status.Status, mdata map[string][]string, eosReceived bool)
+	write(s *ClientStream, hdr []byte, data mem.BufferSlice, opts *WriteOptions) error
+	adjustWindow(s *ClientStream, n uint32)
+	updateWindow(s *ClientStream, n uint32)
 }
 
 // ServerTransport is the common interface for all gRPC server-side transport
